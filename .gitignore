@@ -1,0 +1,5 @@
+.tests/
+.omx/
+.DS_Store
+lazy-lock.json
+nvim.log
