@@ -29,6 +29,12 @@ repository updates should arrive as versioned deltas. Stratum should apply those
 deltas to its cached state and request a fresh snapshot only when version
 continuity is broken or a full refresh is explicitly requested.
 
+During initialization, Stratum requires the current single-repository Gitseer
+protocol: `gitseer/getSnapshot`, `gitseer/refresh`, `gitseer/subscribe`, and
+`gitseer/unsubscribe`, plus `gitseer/snapshot`, `gitseer/delta`, and
+`gitseer/goodbye` notifications. Stratum uses `gitseer/refresh` for stream
+resync because refresh responses carry versioned snapshot metadata.
+
 Gitseer is also expected to filter ignored worktree churn and refresh only the
 state domains affected by a repository event. Stratum should not depend on, or
 normalize around, receiving full snapshots for every file change.

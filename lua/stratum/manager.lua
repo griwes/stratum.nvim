@@ -99,11 +99,15 @@ local function validate_capabilities(capabilities)
     if repository_caps.single_repository_process ~= true then
         return false, 'gitseer initialize did not confirm single-repository mode'
     end
-    if not list_contains(protocol.methods or {}, 'gitseer/subscribe') then
-        return false, 'gitseer initialize did not advertise subscribe support'
-    end
-    if not list_contains(protocol.methods or {}, 'gitseer/refresh') then
-        return false, 'gitseer initialize did not advertise refresh support'
+    for _, method in ipairs({
+        'gitseer/getSnapshot',
+        'gitseer/refresh',
+        'gitseer/subscribe',
+        'gitseer/unsubscribe',
+    }) do
+        if not list_contains(protocol.methods or {}, method) then
+            return false, ('gitseer initialize did not advertise %s support'):format(method)
+        end
     end
     if not list_contains(protocol.notifications or {}, 'gitseer/snapshot') then
         return false, 'gitseer initialize did not advertise snapshot notifications'

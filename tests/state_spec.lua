@@ -42,8 +42,10 @@ local function make_harness()
                 transport = 'stdio',
                 methods = {
                     'initialize',
+                    'gitseer/getSnapshot',
                     'gitseer/refresh',
                     'gitseer/subscribe',
+                    'gitseer/unsubscribe',
                 },
                 notifications = {
                     'gitseer/snapshot',
@@ -219,8 +221,10 @@ describe('stratum state api', function()
                                 transport = 'stdio',
                                 methods = {
                                     'initialize',
+                                    'gitseer/getSnapshot',
                                     'gitseer/refresh',
                                     'gitseer/subscribe',
+                                    'gitseer/unsubscribe',
                                 },
                                 notifications = {
                                     'gitseer/snapshot',
@@ -247,6 +251,56 @@ describe('stratum state api', function()
 
         assert_equal(state.status, 'unavailable')
         assert(state.last_error:find('delta notifications', 1, true))
+    end)
+
+    it('degrades when Gitseer does not advertise the current snapshot protocol', function()
+        stratum._reset_for_tests()
+        stratum.setup({
+            gitseer = {
+                command = 'fake-gitseer',
+                process_factory = function(_, _)
+                    local worker = {}
+
+                    function worker.request(_, _, callback)
+                        callback({
+                            name = 'gitseer',
+                            protocol = {
+                                jsonrpc = '2.0',
+                                version = 1,
+                                transport = 'stdio',
+                                methods = {
+                                    'initialize',
+                                    'gitseer/refresh',
+                                    'gitseer/subscribe',
+                                    'gitseer/unsubscribe',
+                                },
+                                notifications = {
+                                    'gitseer/snapshot',
+                                    'gitseer/delta',
+                                    'gitseer/goodbye',
+                                },
+                            },
+                            repository = {
+                                single_repository_process = true,
+                            },
+                        })
+                    end
+
+                    function worker.stop() end
+
+                    return worker
+                end,
+                repository_locator = function()
+                    return '/repos/alpha'
+                end,
+            },
+        })
+
+        local repo = assert(stratum.ensure_repo('/repos/alpha/file.txt'))
+        local state = assert(stratum.state(repo.id))
+
+        assert_equal(state.status, 'unavailable')
+        assert(state.last_error:find('gitseer/getSnapshot', 1, true))
     end)
 
     it('summarizes Gitseer snapshots for consumers', function()
@@ -706,6 +760,87 @@ describe('stratum state api', function()
         assert_contains(rendered.text, ' attached')
     end)
 
+    it('notifies Statuesque when initially hidden repository state becomes available', function()
+        local harness = make_harness()
+        setup_harness(harness)
+        local worker_factory = harness.factory
+        harness.factory = function(spec, handlers)
+            local worker = worker_factory(spec, handlers)
+            function worker.request(method, params, callback)
+                table.insert(worker.requests, {
+                    method = method,
+                    params = params,
+                })
+
+                if method == 'initialize' and callback then
+                    callback({
+                        name = 'gitseer',
+                        protocol = {
+                            jsonrpc = '2.0',
+                            version = 1,
+                            transport = 'stdio',
+                            methods = {
+                                'initialize',
+                                'gitseer/getSnapshot',
+                                'gitseer/refresh',
+                                'gitseer/subscribe',
+                                'gitseer/unsubscribe',
+                            },
+                            notifications = {
+                                'gitseer/snapshot',
+                                'gitseer/delta',
+                                'gitseer/goodbye',
+                            },
+                        },
+                        repository = {
+                            single_repository_process = true,
+                        },
+                    })
+                end
+            end
+            return worker
+        end
+
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_name(bufnr, '/repos/alpha/initially-hidden.md')
+        local widget = require('stratum.statuesque').repo_status()
+        local notifications = 0
+        local unsubscribe = widget:subscribe(function()
+            notifications = notifications + 1
+        end)
+
+        assert_equal(widget:render({ bufnr = bufnr }), false)
+
+        harness.workers[1].handlers.on_notification({
+            jsonrpc = '2.0',
+            method = 'gitseer/snapshot',
+            params = {
+                version = 1,
+                snapshot = {
+                    identity = {
+                        id = 'gitseer:/repos/alpha',
+                        worktreeRoot = '/repos/alpha',
+                    },
+                    head = {
+                        kind = 'attached',
+                        branch = 'main',
+                    },
+                    paths = {
+                        unstaged = { 'README.md' },
+                        untracked = {},
+                    },
+                },
+            },
+        })
+
+        local rendered = widget:render({ bufnr = bufnr })
+        unsubscribe()
+
+        assert_equal(notifications, 1)
+        assert_equal(rendered.role, 'git-repo')
+        assert_equal(rendered.text, ' main ~1')
+    end)
+
     it('renders Gitseer JSON null fields without treating them as tables', function()
         local harness = make_harness()
         setup_harness(harness)
@@ -727,8 +862,10 @@ describe('stratum state api', function()
                             transport = 'stdio',
                             methods = {
                                 'initialize',
+                                'gitseer/getSnapshot',
                                 'gitseer/refresh',
                                 'gitseer/subscribe',
+                                'gitseer/unsubscribe',
                             },
                             notifications = {
                                 'gitseer/snapshot',
@@ -877,7 +1014,13 @@ describe('stratum state api', function()
                             jsonrpc = '2.0',
                             version = 1,
                             transport = 'stdio',
-                            methods = { 'initialize', 'gitseer/refresh', 'gitseer/subscribe' },
+                            methods = {
+                                'initialize',
+                                'gitseer/getSnapshot',
+                                'gitseer/refresh',
+                                'gitseer/subscribe',
+                                'gitseer/unsubscribe',
+                            },
                             notifications = { 'gitseer/snapshot', 'gitseer/delta', 'gitseer/goodbye' },
                         },
                         repository = {

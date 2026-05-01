@@ -22,6 +22,15 @@ local function wait_until(predicate, message)
     assert(ok, message)
 end
 
+local function git(root, args)
+    local command = { 'git', '-C', root }
+    for _, arg in ipairs(args) do
+        command[#command + 1] = arg
+    end
+    vim.fn.system(command)
+    assert_equal(vim.v.shell_error, 0)
+end
+
 local fake_gitseer = [[
 local repo = ''
 for index, value in ipairs(arg or {}) do
@@ -71,7 +80,13 @@ while true do
                     jsonrpc = '2.0',
                     version = 1,
                     transport = 'stdio',
-                    methods = { 'initialize', 'gitseer/refresh', 'gitseer/subscribe' },
+                    methods = {
+                        'initialize',
+                        'gitseer/getSnapshot',
+                        'gitseer/refresh',
+                        'gitseer/subscribe',
+                        'gitseer/unsubscribe',
+                    },
                     notifications = { 'gitseer/snapshot', 'gitseer/delta', 'gitseer/goodbye' },
                 },
                 repository = {
@@ -218,6 +233,72 @@ local _ = io.read('*l')
 
         local state = assert(stratum.state(repo.id))
         assert(state.snapshot.identity)
+        stratum.stop()
+    end)
+
+    it('updates live state when a real Gitseer worker sees a clean tracked file edit', function()
+        if vim.fn.filereadable('../gitseer/Cargo.toml') == 0 or vim.fn.executable('cargo') == 0 then
+            return
+        end
+
+        stratum._reset_for_tests()
+        local root = vim.fn.tempname()
+        vim.fn.mkdir(root, 'p')
+        vim.fn.system({ 'git', '-C', root, 'init' })
+        assert_equal(vim.v.shell_error, 0)
+        git(root, { 'config', 'user.name', 'Stratum Test' })
+        git(root, { 'config', 'user.email', 'stratum@example.invalid' })
+        git(root, { 'config', 'commit.gpgsign', 'false' })
+        write_file(root .. '/tracked.txt', 'clean\n')
+        git(root, { 'add', 'tracked.txt' })
+        git(root, { 'commit', '-m', 'initial' })
+
+        local events = 0
+        local group = vim.api.nvim_create_augroup('StratumRealGitseerEvents', { clear = true })
+        vim.api.nvim_create_autocmd('User', {
+            group = group,
+            pattern = 'StratumRepositoryUpdated',
+            callback = function()
+                events = events + 1
+            end,
+        })
+
+        stratum.setup({
+            gitseer = {
+                command = 'env',
+                args = {
+                    'CARGO_HOME=/tmp/gitseer-cargo-home',
+                    'cargo',
+                    'run',
+                    '--quiet',
+                    '--manifest-path',
+                    '../gitseer/Cargo.toml',
+                    '--',
+                },
+                repository_locator = function()
+                    return root
+                end,
+            },
+        })
+
+        local repo = assert(stratum.ensure_repo(root .. '/tracked.txt'))
+        wait_until(function()
+            local state = stratum.state(repo.id)
+            return state and state.status == 'connected' and state.snapshot ~= nil
+        end, 'expected real Gitseer baseline snapshot')
+        local baseline_events = events
+
+        write_file(root .. '/tracked.txt', 'dirty\n')
+
+        wait_until(function()
+            local state = stratum.state(repo.id)
+            return state
+                and state.snapshot
+                and state.snapshot.paths
+                and vim.tbl_contains(state.snapshot.paths.unstaged or {}, 'tracked.txt')
+        end, 'expected tracked file edit to update Stratum state')
+
+        assert(events > baseline_events)
         stratum.stop()
     end)
 end)
