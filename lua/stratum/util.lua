@@ -24,4 +24,25 @@ function M.parent_dir(path)
     return M.normalize_path(vim.fn.fnamemodify(path, ':h'))
 end
 
+---@param root string
+---@param path string
+---@return string
+function M.relative_path(root, path)
+    local normalized_root = M.normalize_path(root):gsub('/+$', '')
+    local normalized_path = M.normalize_path(path)
+    if vim.fs.relpath ~= nil then
+        local relative = vim.fs.relpath(normalized_root, normalized_path)
+        if type(relative) == 'string' and relative ~= '' then
+            return relative
+        end
+    end
+
+    local prefix = normalized_root .. '/'
+    if normalized_path:sub(1, #prefix) == prefix then
+        return normalized_path:sub(#prefix + 1)
+    end
+
+    return normalized_path
+end
+
 return M

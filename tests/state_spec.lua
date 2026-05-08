@@ -331,6 +331,35 @@ describe('stratum state api', function()
         assert_equal(summary.operation, 'merge')
     end)
 
+    it('summarizes path-level diff and status data for consumers', function()
+        local path_summary = require('stratum.snapshot').path_summary({
+            paths = {
+                staged = { 'src/demo.lua' },
+                unstaged = { 'src/demo.lua' },
+                untracked = {},
+                conflicted = {},
+                entries = {
+                    {
+                        path = 'src/demo.lua',
+                        diff = {
+                            added = 2,
+                            changed = 3,
+                            removed = 1,
+                        },
+                    },
+                },
+            },
+        }, 'src/demo.lua')
+
+        assert_equal(path_summary.dirty, true)
+        assert_equal(path_summary.staged, true)
+        assert_equal(path_summary.unstaged, true)
+        assert_equal(path_summary.added, 2)
+        assert_equal(path_summary.changed, 3)
+        assert_equal(path_summary.removed, 1)
+        assert_equal(table.concat(path_summary.categories, ','), 'staged,unstaged')
+    end)
+
     it('summarizes cached repository state by id or path', function()
         local harness = make_harness()
         setup_harness(harness)
@@ -341,6 +370,33 @@ describe('stratum state api', function()
 
         assert_equal(by_id.head_label, 'attached')
         assert_equal(by_path.head_label, 'attached')
+    end)
+
+    it('does not report path summaries before connected snapshots exist', function()
+        local harness = make_harness()
+        setup_harness(harness)
+        local worker_factory = harness.factory
+        harness.factory = function(spec, handlers)
+            local worker = worker_factory(spec, handlers)
+            local request = worker.request
+            function worker.request(method, params, callback)
+                if method == 'initialize' then
+                    request(method, params, callback)
+                    return
+                end
+
+                table.insert(worker.requests, {
+                    method = method,
+                    params = params,
+                })
+            end
+            return worker
+        end
+
+        local summary, err = stratum.path_summary('/repos/alpha/file.txt')
+
+        assert_equal(summary, nil)
+        assert_contains(err, 'not ready')
     end)
 
     it('degrades when initialize fails', function()

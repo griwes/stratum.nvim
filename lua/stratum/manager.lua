@@ -561,6 +561,13 @@ function M.snapshot_summary(snapshot, opts)
     return snapshot_mod.summarize(snapshot, opts)
 end
 
+---@param snapshot table
+---@param path string
+---@return stratum.PathSummary
+function M.snapshot_path_summary(snapshot, path)
+    return snapshot_mod.path_summary(snapshot, path)
+end
+
 ---@param repo_id_or_path string
 ---@param opts? stratum.SnapshotSummaryOptions
 ---@return stratum.SnapshotSummary?, string?
@@ -571,6 +578,21 @@ function M.summary(repo_id_or_path, opts)
     end
 
     return snapshot_mod.summarize(state.snapshot, opts)
+end
+
+---@param path string
+---@return stratum.PathSummary?, string?
+function M.path_summary(path)
+    local state, err = M.state(path)
+    if state == nil then
+        return nil, err
+    end
+    if state.status ~= 'connected' or type(state.snapshot) ~= 'table' then
+        return nil, state.last_error or ('repository state is not ready: %s'):format(state.status)
+    end
+
+    local relative = util.relative_path(state.repo.root, path)
+    return snapshot_mod.path_summary(state.snapshot, relative)
 end
 
 ---@param repo_id_or_path string
