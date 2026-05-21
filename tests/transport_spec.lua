@@ -22,6 +22,17 @@ local function wait_until(predicate, message)
     assert(ok, message)
 end
 
+local function real_gitseer_binary()
+    local path = vim.env.GITSEER_BIN
+    if path and path ~= '' and vim.fn.executable(path) == 1 then
+        return vim.fs.normalize(path)
+    end
+    if vim.env.STRATUM_REQUIRE_GITSEER_INTEGRATION == '1' then
+        error('STRATUM_REQUIRE_GITSEER_INTEGRATION requires an executable GITSEER_BIN')
+    end
+    return nil
+end
+
 local function git(root, args)
     local command = { 'git', '-C', root }
     for _, arg in ipairs(args) do
@@ -197,7 +208,8 @@ local _ = io.read('*l')
     end)
 
     it('can subscribe to a real Gitseer worker in this workspace', function()
-        if vim.fn.filereadable('../gitseer/Cargo.toml') == 0 or vim.fn.executable('cargo') == 0 then
+        local gitseer_bin = real_gitseer_binary()
+        if gitseer_bin == nil then
             return
         end
 
@@ -209,16 +221,8 @@ local _ = io.read('*l')
 
         stratum.setup({
             gitseer = {
-                command = 'env',
-                args = {
-                    'CARGO_HOME=/tmp/gitseer-cargo-home',
-                    'cargo',
-                    'run',
-                    '--quiet',
-                    '--manifest-path',
-                    '../gitseer/Cargo.toml',
-                    '--',
-                },
+                command = gitseer_bin,
+                args = {},
                 repository_locator = function()
                     return root
                 end,
@@ -237,7 +241,8 @@ local _ = io.read('*l')
     end)
 
     it('updates live state when a real Gitseer worker sees a clean tracked file edit', function()
-        if vim.fn.filereadable('../gitseer/Cargo.toml') == 0 or vim.fn.executable('cargo') == 0 then
+        local gitseer_bin = real_gitseer_binary()
+        if gitseer_bin == nil then
             return
         end
 
@@ -265,16 +270,8 @@ local _ = io.read('*l')
 
         stratum.setup({
             gitseer = {
-                command = 'env',
-                args = {
-                    'CARGO_HOME=/tmp/gitseer-cargo-home',
-                    'cargo',
-                    'run',
-                    '--quiet',
-                    '--manifest-path',
-                    '../gitseer/Cargo.toml',
-                    '--',
-                },
+                command = gitseer_bin,
+                args = {},
                 repository_locator = function()
                     return root
                 end,
@@ -297,6 +294,93 @@ local _ = io.read('*l')
                 and state.snapshot.paths
                 and vim.tbl_contains(state.snapshot.paths.unstaged or {}, 'tracked.txt')
         end, 'expected tracked file edit to update Stratum state')
+
+        assert(events > baseline_events)
+        stratum.stop()
+    end)
+
+    it('updates live state across common real Git command shapes', function()
+        local gitseer_bin = real_gitseer_binary()
+        if gitseer_bin == nil then
+            return
+        end
+
+        local root = assert(vim.uv.fs_mkdtemp(vim.fs.joinpath(vim.uv.os_tmpdir(), 'stratum-gitseer-live-XXXXXX')))
+        stratum._reset_for_tests()
+        vim.fn.system({ 'git', '-C', root, 'init' })
+        assert_equal(vim.v.shell_error, 0)
+        git(root, { 'config', 'user.name', 'Stratum Test' })
+        git(root, { 'config', 'user.email', 'stratum@example.invalid' })
+        git(root, { 'config', 'commit.gpgsign', 'false' })
+        write_file(root .. '/tracked.txt', 'clean\n')
+        git(root, { 'add', 'tracked.txt' })
+        git(root, { 'commit', '-m', 'initial' })
+
+        local events = 0
+        local group = vim.api.nvim_create_augroup('StratumRealGitseerCommandShapeEvents', { clear = true })
+        vim.api.nvim_create_autocmd('User', {
+            group = group,
+            pattern = 'StratumRepositoryUpdated',
+            callback = function()
+                events = events + 1
+            end,
+        })
+
+        stratum.setup({
+            gitseer = {
+                command = gitseer_bin,
+                args = {},
+                repository_locator = function()
+                    return root
+                end,
+            },
+        })
+
+        local repo = assert(stratum.ensure_repo(root .. '/tracked.txt'))
+        wait_until(function()
+            local state = stratum.state(repo.id)
+            return state and state.status == 'connected' and state.snapshot ~= nil
+        end, 'expected real Gitseer baseline snapshot')
+        local baseline_events = events
+
+        local function snapshot()
+            local state = assert(stratum.state(repo.id))
+            return assert(state.snapshot)
+        end
+
+        local function includes(list_name, path)
+            return vim.tbl_contains(snapshot().paths[list_name] or {}, path)
+        end
+
+        write_file(root .. '/new.txt', 'new\n')
+        wait_until(function()
+            return includes('untracked', 'new.txt')
+        end, 'expected new file creation to appear as untracked')
+
+        git(root, { 'add', 'new.txt' })
+        wait_until(function()
+            return includes('staged', 'new.txt') and not includes('untracked', 'new.txt')
+        end, 'expected git add to move new file into staged paths')
+
+        git(root, { 'restore', '--staged', 'new.txt' })
+        wait_until(function()
+            return includes('untracked', 'new.txt') and not includes('staged', 'new.txt')
+        end, 'expected git restore --staged to return new file to untracked paths')
+
+        write_file(root .. '/tracked.txt', 'dirty\n')
+        wait_until(function()
+            return includes('unstaged', 'tracked.txt')
+        end, 'expected tracked file edit to appear as unstaged')
+
+        assert(os.remove(root .. '/tracked.txt'))
+        wait_until(function()
+            return includes('unstaged', 'tracked.txt')
+        end, 'expected tracked file removal to remain unstaged')
+
+        git(root, { 'add', 'tracked.txt' })
+        wait_until(function()
+            return includes('staged', 'tracked.txt')
+        end, 'expected staging a tracked file removal to appear as staged')
 
         assert(events > baseline_events)
         stratum.stop()
