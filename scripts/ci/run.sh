@@ -5,3 +5,4 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 "${script_dir}/lint.sh"
 "${script_dir}/test.sh"
+"${script_dir}/install-smoke.sh"
