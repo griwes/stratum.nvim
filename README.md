@@ -39,14 +39,22 @@ Gitseer is also expected to filter ignored worktree churn and refresh only the
 state domains affected by a repository event. Stratum should not depend on, or
 normalize around, receiving full snapshots for every file change.
 
+## Requirements
+
+- Neovim 0.11 or newer
+- the `gitseer` executable on `PATH`, or an explicit command path
+- optional: `statuesque.nvim` for the runtimepath Git widget
+
+Linux is the primary supported and CI-tested platform. The project is in early
+development and currently publishes from `main` without a stable release tag.
+
 ## Installation
 
-Example local `lazy.nvim` spec:
+Build Gitseer from its repository, then configure Stratum with `lazy.nvim`:
 
 ```lua
 {
-    dir = vim.fn.expand("~/projects/neovim-plugin-orchestration/stratum.nvim"),
-    name = 'stratum.nvim',
+    'griwes/stratum.nvim',
     opts = {
         gitseer = {
             command = 'gitseer',
@@ -54,6 +62,9 @@ Example local `lazy.nvim` spec:
     },
 }
 ```
+
+Run `:checkhealth stratum` after installation. See `:help stratum` for the
+worker lifecycle and state API.
 
 ## API
 
@@ -111,3 +122,7 @@ Statuesque remains the renderer; Stratum remains the Git-state owner.
 - formatting is enforced with Stylua
 - Lua modules should carry LuaLS annotations and doc comments
 - CI lives in `.github/workflows/ci.yml`
+
+## License
+
+Apache-2.0. See [`LICENSE`](LICENSE).

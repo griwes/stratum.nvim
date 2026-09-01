@@ -1,0 +1,46 @@
+*stratum.txt*                      Stratum Git substrate
+
+==============================================================================
+CONTENTS                                                       *stratum-contents*
+
+1. Introduction .............................................. |stratum|
+2. Setup ...................................................... |stratum-setup|
+3. API ........................................................ |stratum-api|
+4. Health ..................................................... |stratum-health|
+
+==============================================================================
+INTRODUCTION                                                       *stratum*
+
+Stratum maintains cached Git repository state through one Gitseer worker per
+repository. It is a shared state substrate, not a Git UI. Neovim 0.11 or newer
+and a compatible `gitseer` executable are required.
+
+==============================================================================
+SETUP                                                     *stratum-setup*
+
+>lua
+    require('stratum').setup({
+        gitseer = {
+            command = 'gitseer',
+            auto_start = true,
+        },
+    })
+<
+
+==============================================================================
+API                                                         *stratum-api*
+
+Common functions are `start()`, `stop()`, `repo_for_path()`, `ensure_repo()`,
+`state()`, `summary()`, `snapshot_summary()`, `subscribe()`, and `refresh()`.
+
+Repository updates emit the `User StratumRepositoryUpdated` event. Stratum also
+ships the optional runtimepath widget `statuesque.widgets.git_repo`.
+
+==============================================================================
+HEALTH                                                   *stratum-health*
+
+Run: >vim
+    :checkhealth stratum
+<
+
+vim:tw=78:ts=8:noet:ft=help:norl:
