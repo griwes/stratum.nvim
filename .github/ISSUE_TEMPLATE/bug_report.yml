@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a reproducible defect in Stratum.
+title: "bug: "
+labels:
+    - bug
+body:
+    - type: markdown
+      attributes:
+          value: Before filing, reproduce the issue on the current main branch with a minimal configuration.
+    - type: input
+      id: revision
+      attributes:
+          label: Revision
+          description: The exact commit SHA where the issue occurs.
+      validations:
+          required: true
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          description: Operating system, Neovim version, checkhealth output, and relevant dependency versions.
+      validations:
+          required: true
+    - type: textarea
+      id: reproduction
+      attributes:
+          label: Minimal reproduction
+          description: Provide the smallest configuration, input, and commands that reproduce the issue.
+      validations:
+          required: true
+    - type: textarea
+      id: expected
+      attributes:
+          label: Expected behavior
+      validations:
+          required: true
+    - type: textarea
+      id: actual
+      attributes:
+          label: Actual behavior
+          description: Include relevant logs or error messages after removing secrets and private data.
+      validations:
+          required: true
+    - type: checkboxes
+      id: checks
+      attributes:
+          label: Checks
+          options:
+              - label: I reproduced this on the current main branch.
+                required: true
+              - label: This report does not contain secrets or private vulnerability details.
+                required: true
+
