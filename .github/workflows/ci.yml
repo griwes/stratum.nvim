@@ -18,33 +18,42 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
-            - uses: actions/checkout@v4
-            - uses: JohnnyMorganz/stylua-action@v4
-              with:
-                  version: latest
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  args: --check .
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+            - name: Install Stylua
+              run: cargo install stylua --version 2.5.2 --locked
+            - name: Run lint checks
+              run: scripts/ci/lint.sh
+            - name: Validate workflow syntax
+              run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
 
     test:
+        name: test (${{ matrix.neovim }})
         runs-on: ubuntu-latest
         timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            matrix:
+                neovim: ['v0.11.5', 'stable', 'nightly']
         env:
             GITSEER_BIN: ${{ github.workspace }}/.dependencies/gitseer/target/debug/gitseer
             STRATUM_REQUIRE_GITSEER_INTEGRATION: '1'
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
               with:
                   repository: griwes/gitseer
                   ref: main
                   path: .dependencies/gitseer
-            - uses: dtolnay/rust-toolchain@stable
+            - name: Install stable Rust
+              run: rustup update stable --no-self-update
             - name: Build Gitseer
               working-directory: .dependencies/gitseer
               run: scripts/ci/build.sh
-            - uses: rhysd/action-setup-vim@v1
+            - uses: rhysd/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # v1
               with:
                   neovim: true
-                  version: stable
+                  version: ${{ matrix.neovim }}
             - name: Run tests
               run: scripts/ci/test.sh
+            - name: Run clean-install smoke
+              run: scripts/ci/install-smoke.sh
