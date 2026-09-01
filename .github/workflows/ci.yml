@@ -1,0 +1,50 @@
+name: ci
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v4
+            - uses: JohnnyMorganz/stylua-action@v4
+              with:
+                  version: latest
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  args: --check .
+
+    test:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        env:
+            GITSEER_BIN: ${{ github.workspace }}/.dependencies/gitseer/target/debug/gitseer
+            STRATUM_REQUIRE_GITSEER_INTEGRATION: '1'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/checkout@v4
+              with:
+                  repository: griwes/gitseer
+                  ref: main
+                  path: .dependencies/gitseer
+            - uses: dtolnay/rust-toolchain@stable
+            - name: Build Gitseer
+              working-directory: .dependencies/gitseer
+              run: scripts/ci/build.sh
+            - uses: rhysd/action-setup-vim@v1
+              with:
+                  neovim: true
+                  version: stable
+            - name: Run tests
+              run: scripts/ci/test.sh
