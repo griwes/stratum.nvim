@@ -18,7 +18,7 @@ jobs:
         runs-on: ubuntu-26.04
         timeout-minutes: 10
         steps:
-            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
             - name: Install Stylua
               run: cargo install stylua --version 2.5.2 --locked
             - name: Run lint checks
@@ -38,8 +38,8 @@ jobs:
             GITSEER_BIN: ${{ github.workspace }}/.dependencies/gitseer/target/debug/gitseer
             STRATUM_REQUIRE_GITSEER_INTEGRATION: '1'
         steps:
-            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   repository: griwes/gitseer
                   ref: main
@@ -65,8 +65,8 @@ jobs:
             RUSTUP_TOOLCHAIN: 1.98.0
             STRATUM_GITSEER_INSTALL_SOURCE: cargo
         steps:
-            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   repository: griwes/gitseer
                   ref: main
@@ -85,7 +85,7 @@ jobs:
         env:
             STRATUM_GITSEER_INSTALL_SOURCE: github
         steps:
-            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
             - name: Install Neovim
               run: scripts/ci/install-neovim.sh stable
             - name: Install Gitseer through Stratum
