@@ -1,5 +1,5 @@
 paths:
     .github/workflows/**/*.{yml,yaml}:
         ignore:
-            # Remove when rhysd/actionlint#683 is released.
+            # rhysd/actionlint#683 fixes ubuntu-26.04 recognition; remove this when released.
             - 'label "ubuntu-26\.04" is unknown'

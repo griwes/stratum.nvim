@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+early_access: false
+tone_instructions: >-
+    Be direct and technical. Prioritize correctness, behavioral regressions,
+    lifecycle ownership, security, and missing tests over style commentary.
+reviews:
+    profile: assertive
+    request_changes_workflow: false
+    high_level_summary: true
+    poem: false
+    in_progress_fortune: false
+    review_status: true
+    collapse_walkthrough: false
+    sequence_diagrams: false
+    auto_review:
+        enabled: true
+        auto_incremental_review: true
+        drafts: false
+        base_branches:
+            - main
+    path_instructions:
+        - path: '**/*.lua'
+          instructions: >-
+              Review Neovim API correctness, lifecycle cleanup, asynchronous
+              callback scheduling, state ownership, LuaLS annotations, and
+              public API compatibility. Prefer vim.api over vim.fn when both
+              are practical. Flag hidden cross-plugin coupling, unnecessary
+              registries, and compatibility shims without verified consumers.
+        - path: 'tests/**/*.lua'
+          instructions: >-
+              Require tests for behavior, failures, cleanup, restoration, and
+              cross-plugin contracts. Fixtures should exercise public behavior
+              instead of reproducing implementation internals.
+        - path: '**/*.rs'
+          instructions: >-
+              Review ownership, cancellation, concurrency, protocol
+              compatibility, error propagation, and filesystem or process
+              boundaries. Flag unchecked panics and unsafe code without a
+              documented invariant.
+        - path: 'Cargo.toml'
+          instructions: >-
+              Check MSRV compatibility, dependency scope, feature selection,
+              and Apache-2.0-compatible licensing.
+        - path: '.github/workflows/**/*.yml'
+          instructions: >-
+              Require least-privilege permissions, immutable action SHA pins,
+              bounded timeouts, Linux-only ubuntu-26.04 runners, and syntax
+              accepted by the repository actionlint configuration.
+        - path: '.github/workflows/**/*.yaml'
+          instructions: >-
+              Require least-privilege permissions, immutable action SHA pins,
+              bounded timeouts, Linux-only ubuntu-26.04 runners, and syntax
+              accepted by the repository actionlint configuration.
+        - path: 'scripts/**/*.sh'
+          instructions: >-
+              Check strict shell behavior, quoting, cleanup, portability across
+              supported Linux runners, and equivalence between local and CI
+              execution.
+        - path: '**/*.md'
+          instructions: >-
+              Keep installation, API, support, security, and compatibility
+              claims aligned with the implementation and CI evidence.
+    tools:
+        actionlint:
+            enabled: true
+        clippy:
+            enabled: true
+        shellcheck:
+            enabled: true
+        yamllint:
+            enabled: true
+        zizmor:
+            enabled: true
+chat:
+    art: false
+    auto_reply: true
