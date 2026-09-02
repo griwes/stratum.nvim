@@ -5,7 +5,7 @@ local M = {}
 ---@class stratum.Repository
 ---@field id string
 ---@field root string
----@field status 'starting'|'connected'|'stale'|'disconnected'|'unavailable'
+---@field status 'installing'|'starting'|'connected'|'stale'|'disconnected'|'unavailable'
 ---@field stale boolean
 ---@field snapshot? table
 ---@field last_error? string

@@ -1,4 +1,6 @@
 local config_mod = require('stratum.config')
+local capabilities_mod = require('stratum.gitseer.capabilities')
+local installer = require('stratum.gitseer.install')
 local repository = require('stratum.repository')
 local snapshot_mod = require('stratum.snapshot')
 local transport = require('stratum.transport')
@@ -21,7 +23,7 @@ local util = require('stratum.util')
 ---@field last_error? string
 
 ---@class stratum.Status
----@field state 'stopped'|'ready'|'starting'|'connected'|'degraded'|'unavailable'
+---@field state 'stopped'|'ready'|'installing'|'starting'|'connected'|'degraded'|'unavailable'
 ---@field repos integer
 ---@field last_error? string
 
@@ -50,6 +52,7 @@ local subscribers_by_id = {}
 
 local next_subscriber_id = 0
 local next_worker_token = 0
+local lifecycle_generation = 0
 local expected_exits_by_token = {}
 local patch_keys = {
     'identity',
@@ -67,57 +70,6 @@ local optional_patch_keys = {
     'headCommit',
     'upstream',
 }
-
----@param values string[]
----@param needle string
----@return boolean
-local function list_contains(values, needle)
-    for _, value in ipairs(values) do
-        if value == needle then
-            return true
-        end
-    end
-
-    return false
-end
-
----@param capabilities? table
----@return boolean, string?
-local function validate_capabilities(capabilities)
-    if type(capabilities) ~= 'table' then
-        return false, 'gitseer initialize returned no capabilities'
-    end
-
-    local protocol = capabilities.protocol or {}
-    local repository_caps = capabilities.repository or {}
-    if capabilities.name ~= 'gitseer' then
-        return false, 'gitseer initialize returned an unexpected process name'
-    end
-    if protocol.jsonrpc ~= '2.0' or protocol.version ~= 1 or protocol.transport ~= 'stdio' then
-        return false, 'gitseer initialize returned an unsupported protocol'
-    end
-    if repository_caps.single_repository_process ~= true then
-        return false, 'gitseer initialize did not confirm single-repository mode'
-    end
-    for _, method in ipairs({
-        'gitseer/getSnapshot',
-        'gitseer/refresh',
-        'gitseer/subscribe',
-        'gitseer/unsubscribe',
-    }) do
-        if not list_contains(protocol.methods or {}, method) then
-            return false, ('gitseer initialize did not advertise %s support'):format(method)
-        end
-    end
-    if not list_contains(protocol.notifications or {}, 'gitseer/snapshot') then
-        return false, 'gitseer initialize did not advertise snapshot notifications'
-    end
-    if not list_contains(protocol.notifications or {}, 'gitseer/delta') then
-        return false, 'gitseer initialize did not advertise delta notifications'
-    end
-
-    return true
-end
 
 ---@param repo stratum.Repository
 ---@return stratum.Repository
@@ -361,6 +313,30 @@ local function start_worker(repo)
     end
 
     if M.config.gitseer.process_factory == nil and vim.fn.executable(M.config.gitseer.command) == 0 then
+        local install = M.config.gitseer.install
+        if install.source ~= 'path' and install.auto then
+            repo.status = 'installing'
+            repo.last_error = nil
+            status.state = 'installing'
+            status.last_error = nil
+            local generation = lifecycle_generation
+            installer.install(install, false, function(result)
+                if
+                    generation ~= lifecycle_generation
+                    or repos_by_id[repo.id] ~= repo
+                    or workers_by_id[repo.id] ~= nil
+                then
+                    return
+                end
+                if not result.ok then
+                    mark_unavailable(repo, result.error or 'Gitseer installation failed')
+                    return
+                end
+                start_worker(repo)
+            end)
+            return
+        end
+
         local message = ('gitseer executable not found: %s'):format(M.config.gitseer.command)
         mark_unavailable(repo, message)
         return
@@ -432,7 +408,7 @@ local function start_worker(repo)
             return
         end
 
-        local valid, message = validate_capabilities(capabilities)
+        local valid, message = capabilities_mod.validate(capabilities)
         if not valid then
             mark_unavailable(repo, message or 'gitseer initialize returned unsupported capabilities')
             expected_exits_by_token[worker_token] = true
@@ -448,8 +424,38 @@ end
 ---@param opts? stratum.Config
 ---@return stratum.Config
 function M.setup(opts)
+    lifecycle_generation = lifecycle_generation + 1
     M.config = config_mod.normalize(opts)
     return util.deepcopy(M.config)
+end
+
+---@param opts? { force?: boolean }
+---@param callback? fun(result: stratum.GitseerInstallResult)
+---@return string command
+function M.install_gitseer(opts, callback)
+    opts = opts or {}
+    if type(opts) ~= 'table' then
+        error('stratum.install_gitseer: opts must be a table or nil')
+    end
+    if opts.force ~= nil and type(opts.force) ~= 'boolean' then
+        error('stratum.install_gitseer: force must be a boolean')
+    end
+    if callback ~= nil and type(callback) ~= 'function' then
+        error('stratum.install_gitseer: callback must be a function or nil')
+    end
+
+    installer.install(M.config.gitseer.install, opts.force == true, callback or function() end)
+    return M.config.gitseer.command
+end
+
+---@return table
+function M.gitseer_installation()
+    return {
+        source = M.config.gitseer.install.source,
+        version = M.config.gitseer.install.version,
+        command = M.config.gitseer.command,
+        installed = installer.is_installed(M.config.gitseer.install),
+    }
 end
 
 ---@return stratum.Status
@@ -462,6 +468,7 @@ function M.start()
 end
 
 function M.stop()
+    lifecycle_generation = lifecycle_generation + 1
     for repo_id, worker in pairs(workers_by_id) do
         expected_exits_by_token[worker._stratum_token] = true
         worker.stop()

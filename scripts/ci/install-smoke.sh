@@ -16,6 +16,6 @@ XDG_CACHE_HOME="${work_root}/cache" \
 nvim --headless -u NONE -i NONE --cmd 'set loadplugins' \
     --cmd 'lua vim.opt.runtimepath:prepend(vim.env.PLUGIN_ROOT)' \
     -c "helptags ${work_root}/doc" \
-    -c "lua require('stratum').setup({ gitseer = { command = '/bin/false', args = {}, auto_start = false } })" \
+    -c "lua require('stratum').setup({ gitseer = { install = { source = 'path', path = '/bin/false' }, args = {}, auto_start = false } })" \
     -c 'silent checkhealth stratum' \
     -c 'qa!'

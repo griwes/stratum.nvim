@@ -87,6 +87,7 @@ while true do
             id = request.id,
             result = {
                 name = 'gitseer',
+                version = '0.1.0',
                 protocol = {
                     jsonrpc = '2.0',
                     version = 1,
@@ -144,7 +145,7 @@ describe('stratum real transport', function()
 
         stratum.setup({
             gitseer = {
-                command = vim.v.progpath,
+                install = { source = 'path', path = vim.v.progpath },
                 args = { '--headless', '--clean', '-l', script },
                 repository_locator = function()
                     return root
@@ -172,12 +173,12 @@ local _ = io.read('*l')
         local callback_err
         local exit_reason
         local worker = transport.create(
-            {
+            require('stratum.config').normalize({
                 gitseer = {
-                    command = vim.v.progpath,
+                    install = { source = 'path', path = vim.v.progpath },
                     args = { '--headless', '--clean', '-l', script },
                 },
-            },
+            }),
             '/tmp/repo',
             {
                 on_notification = function() end,
@@ -221,7 +222,7 @@ local _ = io.read('*l')
 
         stratum.setup({
             gitseer = {
-                command = gitseer_bin,
+                install = { source = 'path', path = gitseer_bin },
                 args = {},
                 repository_locator = function()
                     return root
@@ -270,7 +271,7 @@ local _ = io.read('*l')
 
         stratum.setup({
             gitseer = {
-                command = gitseer_bin,
+                install = { source = 'path', path = gitseer_bin },
                 args = {},
                 repository_locator = function()
                     return root
@@ -328,7 +329,7 @@ local _ = io.read('*l')
 
         stratum.setup({
             gitseer = {
-                command = gitseer_bin,
+                install = { source = 'path', path = gitseer_bin },
                 args = {},
                 repository_locator = function()
                     return root

@@ -36,6 +36,7 @@ local function make_harness()
     local function capabilities()
         return {
             name = 'gitseer',
+            version = '0.1.0',
             protocol = {
                 jsonrpc = '2.0',
                 version = 1,
@@ -108,7 +109,7 @@ local function setup_harness(harness)
     stratum._reset_for_tests()
     stratum.setup({
         gitseer = {
-            command = 'fake-gitseer',
+            install = { source = 'path', path = 'fake-gitseer' },
             process_factory = function(spec, handlers)
                 return harness.factory(spec, handlers)
             end,
@@ -171,7 +172,7 @@ describe('stratum state api', function()
         stratum._reset_for_tests()
         stratum.setup({
             gitseer = {
-                command = 'fake-gitseer',
+                install = { source = 'path', path = 'fake-gitseer' },
                 process_factory = function(_, _)
                     local worker = {
                         stopped = false,
@@ -208,13 +209,14 @@ describe('stratum state api', function()
         stratum._reset_for_tests()
         stratum.setup({
             gitseer = {
-                command = 'fake-gitseer',
+                install = { source = 'path', path = 'fake-gitseer' },
                 process_factory = function(_, _)
                     local worker = {}
 
                     function worker.request(_, _, callback)
                         callback({
                             name = 'gitseer',
+                            version = '0.1.0',
                             protocol = {
                                 jsonrpc = '2.0',
                                 version = 1,
@@ -257,13 +259,14 @@ describe('stratum state api', function()
         stratum._reset_for_tests()
         stratum.setup({
             gitseer = {
-                command = 'fake-gitseer',
+                install = { source = 'path', path = 'fake-gitseer' },
                 process_factory = function(_, _)
                     local worker = {}
 
                     function worker.request(_, _, callback)
                         callback({
                             name = 'gitseer',
+                            version = '0.1.0',
                             protocol = {
                                 jsonrpc = '2.0',
                                 version = 1,
@@ -403,7 +406,7 @@ describe('stratum state api', function()
         stratum._reset_for_tests()
         stratum.setup({
             gitseer = {
-                command = 'fake-gitseer',
+                install = { source = 'path', path = 'fake-gitseer' },
                 process_factory = function(_, _)
                     local worker = {
                         stopped = false,
@@ -831,6 +834,7 @@ describe('stratum state api', function()
                 if method == 'initialize' and callback then
                     callback({
                         name = 'gitseer',
+                        version = '0.1.0',
                         protocol = {
                             jsonrpc = '2.0',
                             version = 1,
@@ -912,6 +916,7 @@ describe('stratum state api', function()
                 if method == 'initialize' and callback then
                     callback({
                         name = 'gitseer',
+                        version = '0.1.0',
                         protocol = {
                             jsonrpc = '2.0',
                             version = 1,
@@ -975,7 +980,7 @@ describe('stratum state api', function()
         stratum._reset_for_tests()
         stratum.setup({
             gitseer = {
-                command = 'fake-gitseer',
+                install = { source = 'path', path = 'fake-gitseer' },
                 process_factory = function(_, _)
                     local worker = {}
 
@@ -1020,7 +1025,7 @@ describe('stratum state api', function()
         stratum._reset_for_tests()
         stratum.setup({
             gitseer = {
-                command = 'definitely-missing-gitseer-for-stratum-tests',
+                install = { source = 'path', path = 'definitely-missing-gitseer-for-stratum-tests' },
                 repository_locator = function()
                     return '/repos/alpha'
                 end,
@@ -1066,6 +1071,7 @@ describe('stratum state api', function()
                 if method == 'initialize' then
                     callback({
                         name = 'gitseer',
+                        version = '0.1.0',
                         protocol = {
                             jsonrpc = '2.0',
                             version = 1,

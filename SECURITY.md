@@ -16,3 +16,9 @@ There is no guaranteed response SLA while the project is pre-release. Reports wi
 
 Security reports are especially useful for unintended command execution, path traversal, authentication or approval bypass, secret disclosure, unsafe persistence, and denial-of-service behavior caused by untrusted input. The project does not claim to sandbox Neovim, user configuration, installed plugins, or explicitly configured external programs.
 
+Managed Gitseer installation executes a downloaded release binary or invokes
+Cargo against the configured repository and revision. GitHub release downloads
+are checked against the checksum published beside the asset and are rejected
+unless `gitseer capabilities` advertises the protocol Stratum expects. Those
+checks detect corruption and incompatible binaries; they do not make a
+compromised GitHub repository, release, Cargo source, or user override trusted.

@@ -11,8 +11,13 @@ function M.check()
 
     local config = require('stratum').config
     local command = config.gitseer.command
+    vim.health.info(('Gitseer source: %s (%s)'):format(config.gitseer.install.source, config.gitseer.install.version))
     if vim.fn.executable(command) == 1 then
         vim.health.ok('Gitseer is executable: ' .. command)
+    elseif config.gitseer.install.source ~= 'path' and config.gitseer.install.auto then
+        vim.health.warn('Gitseer is not installed yet: ' .. command, {
+            'Run :StratumInstallGitseer to install it now.',
+        })
     else
         vim.health.error('Gitseer is not executable: ' .. command)
     end

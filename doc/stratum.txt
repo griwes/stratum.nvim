@@ -5,15 +5,17 @@ CONTENTS                                                       *stratum-contents
 
 1. Introduction .............................................. |stratum|
 2. Setup ...................................................... |stratum-setup|
-3. API ........................................................ |stratum-api|
-4. Health ..................................................... |stratum-health|
+3. Gitseer installation ........................... |stratum-gitseer-install|
+4. API ........................................................ |stratum-api|
+5. Health ..................................................... |stratum-health|
 
 ==============================================================================
 INTRODUCTION                                                       *stratum*
 
 Stratum maintains cached Git repository state through one Gitseer worker per
 repository. It is a shared state substrate, not a Git UI. Neovim 0.11 or newer
-and a compatible `gitseer` executable are required.
+and a compatible `gitseer` executable are required. Stratum can install and
+manage that executable.
 
 ==============================================================================
 SETUP                                                     *stratum-setup*
@@ -21,17 +23,45 @@ SETUP                                                     *stratum-setup*
 >lua
     require('stratum').setup({
         gitseer = {
-            command = 'gitseer',
+            install = {
+                source = 'github',
+            },
             auto_start = true,
         },
     })
 <
+
+===============================================================================
+GITSEER INSTALLATION                              *stratum-gitseer-install*
+
+The `gitseer.install.source` option accepts:
+
+- `github`: download the Linux amd64 binary from a GitHub release. The default
+  version is `nightly`.
+- `cargo`: run `cargo install` against the Gitseer repository. The default
+  version is the `main` branch; other values select Git tags.
+- `path`: use `gitseer.install.path` without copying or updating it.
+
+Managed sources install beneath `gitseer.install.root`. Missing managed
+binaries install automatically when the first repository worker is needed
+unless `gitseer.install.auto` is false. Setup itself has no installation side
+effects.
+
+Use `:StratumInstallGitseer` to install or validate the configured source. Use
+`:StratumInstallGitseer!` to replace an existing managed binary, including an
+older build from the mutable `nightly` release or `main` branch.
+
+GitHub downloads require `curl` and `sha256sum`. Cargo installs require a Rust
+toolchain and the native build dependencies used by Gitseer.
 
 ==============================================================================
 API                                                         *stratum-api*
 
 Common functions are `start()`, `stop()`, `repo_for_path()`, `ensure_repo()`,
 `state()`, `summary()`, `snapshot_summary()`, `subscribe()`, and `refresh()`.
+`install_gitseer({ force = boolean }, callback)` installs or validates the
+configured source asynchronously. `gitseer_installation()` reports its source,
+version, resolved command, and current executable state.
 
 Repository updates emit the `User StratumRepositoryUpdated` event. Stratum also
 ships the optional runtimepath widget `statuesque.widgets.git_repo`.

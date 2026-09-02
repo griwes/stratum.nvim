@@ -42,7 +42,8 @@ normalize around, receiving full snapshots for every file change.
 ## Requirements
 
 - Neovim 0.11 or newer
-- the `gitseer` executable on `PATH`, or an explicit command path
+- `curl` and `sha256sum` for the default GitHub release installation, or a Rust
+  toolchain for Cargo installation
 - optional: `statuesque.nvim` for the runtimepath Git widget
 
 Linux is the primary supported and CI-tested platform. The project is in early
@@ -50,18 +51,49 @@ development and currently publishes from `main` without a stable release tag.
 
 ## Installation
 
-Build Gitseer from its repository, then configure Stratum with `lazy.nvim`:
+Stratum installs Gitseer from the rolling `nightly` GitHub release by default.
+The first repository worker request installs the binary into Stratum's Neovim
+data directory, verifies its checksum, and requires the current Gitseer
+capability protocol before activating it:
 
 ```lua
 {
     'griwes/stratum.nvim',
-    opts = {
-        gitseer = {
-            command = 'gitseer',
-        },
-    },
+    opts = {},
 }
 ```
+
+The source can instead build Gitseer from its `main` branch with Cargo, or use a
+user-managed executable without copying it:
+
+```lua
+-- Build and install Gitseer from main with Cargo.
+require('stratum').setup({
+    gitseer = {
+        install = { source = 'cargo' },
+    },
+})
+
+-- Use an executable managed outside Stratum.
+require('stratum').setup({
+    gitseer = {
+        install = {
+            source = 'path',
+            path = '/usr/local/bin/gitseer',
+        },
+    },
+})
+```
+
+On `main`, the known development versions are GitHub release `nightly` and
+Cargo branch `main`. An explicit `install.version` overrides the source default;
+GitHub versions name release tags, while non-`main` Cargo versions name Git
+tags. `install.root` overrides the managed installation directory. Set
+`install.auto = false` to require an explicit installation.
+
+Run `:StratumInstallGitseer` to install or validate the configured source.
+`:StratumInstallGitseer!` forces a replacement, which is how a mutable nightly
+or `main` installation is updated.
 
 Run `:checkhealth stratum` after installation. See `:help stratum` for the
 worker lifecycle and state API.
@@ -73,11 +105,19 @@ local stratum = require('stratum')
 
 stratum.setup({
     gitseer = {
-        command = 'gitseer',
+        install = {
+            source = 'github',
+        },
         args = {},
         auto_start = true,
     },
 })
+
+stratum.install_gitseer({ force = false }, function(result)
+    if not result.ok then
+        vim.notify(result.error, vim.log.levels.ERROR)
+    end
+end)
 
 stratum.start()
 

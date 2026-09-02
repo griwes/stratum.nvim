@@ -24,6 +24,7 @@ end
 
 dofile('tests/stratum_spec.lua')
 dofile('tests/config_spec.lua')
+dofile('tests/gitseer/install_spec.lua')
 dofile('tests/state_spec.lua')
 dofile('tests/transport_spec.lua')
 
