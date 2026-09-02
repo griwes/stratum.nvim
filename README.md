@@ -5,7 +5,7 @@ Neovim Git substrate backed by gitseer.
 ## Status
 
 Early development. The current implementation provides the initial lifecycle and
-state API skeleton:
+state API:
 
 - repository-root discovery for paths
 - one owned `gitseer serve --repo <root>` worker per repository
@@ -23,11 +23,11 @@ state without each shelling out to `git status`.
 
 ## Gitseer Stream Contract
 
-Stratum expects Gitseer to send a full snapshot for initial subscription,
-explicit snapshot/refresh requests, and resync/error recovery. Ordinary watched
-repository updates should arrive as versioned deltas. Stratum should apply those
-deltas to its cached state and request a fresh snapshot only when version
-continuity is broken or a full refresh is explicitly requested.
+Gitseer sends a full snapshot for initial subscription, explicit
+snapshot/refresh requests, and resync/error recovery. Ordinary watched
+repository updates arrive as versioned deltas. Stratum applies those deltas to
+its cached state and requests a fresh snapshot when version continuity is
+broken or a full refresh is explicitly requested.
 
 During initialization, Stratum requires the current single-repository Gitseer
 protocol: `gitseer/getSnapshot`, `gitseer/refresh`, `gitseer/subscribe`, and
@@ -35,9 +35,9 @@ protocol: `gitseer/getSnapshot`, `gitseer/refresh`, `gitseer/subscribe`, and
 `gitseer/goodbye` notifications. Stratum uses `gitseer/refresh` for stream
 resync because refresh responses carry versioned snapshot metadata.
 
-Gitseer is also expected to filter ignored worktree churn and refresh only the
-state domains affected by a repository event. Stratum should not depend on, or
-normalize around, receiving full snapshots for every file change.
+Gitseer filters ignored worktree churn and classifies repository events into
+affected state domains. Stratum consumes that targeted stream and does not
+treat full snapshots as the ordinary response to each file change.
 
 ## Requirements
 
@@ -158,10 +158,9 @@ Statuesque remains the renderer; Stratum remains the Git-state owner.
 
 ## Development
 
-- tests live in `tests/`
-- formatting is enforced with Stylua
-- Lua modules should carry LuaLS annotations and doc comments
-- CI lives in `.github/workflows/ci.yml`
+Run `scripts/ci/run.sh` for the same Stylua and test gates used by CI. Tests
+live under `tests/`; the GitHub Actions workflow is
+`.github/workflows/ci.yml`.
 
 ## License
 
