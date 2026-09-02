@@ -159,9 +159,10 @@ Statuesque remains the renderer; Stratum remains the Git-state owner.
 ## Development
 
 Run `scripts/ci/run.sh` for the repository-local Stylua, test, and clean-install
-smoke checks. GitHub Actions runs them on Neovim 0.11.5, stable, and nightly,
-validates workflow syntax with actionlint, and verifies both managed Gitseer
-installation paths. Tests live under `tests/`; the workflow is
+smoke checks. GitHub Actions runs the tests and clean-install smoke checks on
+Neovim 0.11.5, stable, and nightly. A separate lint job runs Stylua and
+validates workflow syntax with actionlint, and additional jobs verify both
+managed Gitseer installation paths. Tests live under `tests/`; the workflow is
 `.github/workflows/ci.yml`.
 
 ## License
